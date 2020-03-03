@@ -9,13 +9,27 @@ import io.gitlab.arturbosch.detekt.cli.runners.Executable
 import io.gitlab.arturbosch.detekt.cli.runners.Runner
 import io.gitlab.arturbosch.detekt.cli.runners.SingleRuleRunner
 import io.gitlab.arturbosch.detekt.cli.runners.VersionPrinter
+import java.io.File
 import java.io.PrintStream
 import kotlin.system.exitProcess
 
 @Suppress("TooGenericExceptionCaught")
 fun main(args: Array<String>) {
+    fun shouldUseArgumentsFile(): Boolean =
+        args.size == 1 && args.first().startsWith("@")
+
     try {
-        buildRunner(args).execute()
+        var arguments = args
+        if (shouldUseArgumentsFile()) {
+            val argsFile = args.first().removePrefix("@")
+            arguments = File(argsFile).useLines { seq ->
+                seq.flatMap { it.splitToSequence(" ") }
+                    .filterNot { it.isBlank() }
+                    .toList()
+                    .toTypedArray()
+            }
+        }
+        buildRunner(arguments).execute()
     } catch (_: HelpRequest) {
         // handled by JCommander, exit normally
     } catch (e: InvalidConfig) {
